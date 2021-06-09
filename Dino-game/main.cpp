@@ -15,9 +15,10 @@ bool key_control = false;
 bool dino_fly = false;
 bool dino_up = false;
 int dino_height = 0;
-int jump_height = -150;
+int jump_height = -250;
 bool block = false;
 int rockPosition[3];
+bool isRock[3];
 int distance = 100;
 int score = 0;
 bool spawn = false;
@@ -25,14 +26,18 @@ int rockWidth = 60;
 int rockHeight = 70;
 bool stop = false;
 int speed = 20;
+int globalYpos = 300;
+int BirdOrRock = 0;
+int dino_virtual_height = 0;
+int objectToCheck = 0;
 using namespace sf;
 int main()
 {
     // create the window
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "ZOMBIE TIME");
     window.setFramerateLimit(30);
-    Texture textureBackground, dinoImg, rockImg;
-    Sprite sprite, dino, rock[3];
+    Texture textureBackground, dinoImg, dinoDownImg,birdImg, rockImg;
+    Sprite sprite,bird, dino, dinoDown , rock[3];
 
     float dinoSpeed = 1;
 
@@ -65,9 +70,15 @@ int main()
         rock[1].setTexture(rockImg);
         rock[2].setTexture(rockImg);
 
-        rock[0].setPosition(-300,-500);
-        rock[1].setPosition(-300,-500);
-        rock[2].setPosition(-300,-500);
+        rock[0].setPosition(2000,-500);
+        rock[1].setPosition(2000,-500);
+        rock[2].setPosition(2000,-500);
+
+        rock[0].setScale(1.3,1.3);
+        rock[1].setScale(1.3,1.3);
+        rock[2].setScale(1.3,1.3);
+
+
 
     }
     if(!dinoImg.loadFromFile("../dino.png")){
@@ -77,6 +88,26 @@ int main()
     {
         dino.setTexture(dinoImg);
         dino.setPosition(0,0);
+        dino.setScale(1.3,1.3);
+    }
+    if(!birdImg.loadFromFile("../bird.png")){
+        std::cout << "error bird image" << std:: endl;
+    }
+    else
+    {
+        bird.setTexture(birdImg);
+        bird.setPosition(0,0);
+        bird.setScale(1.3,1.3);
+    }
+
+    if(!dinoDownImg.loadFromFile("../dino2.png")){
+        std::cout << "error dinoDown image" << std:: endl;
+    }
+    else
+    {
+        dinoDown.setTexture(dinoDownImg);
+        dinoDown.setPosition(0,0);
+        dinoDown.setScale(1.3,1.3);
     }
     Font neodgm;
     if (!neodgm.loadFromFile("../neodgm.ttf")) {
@@ -90,6 +121,8 @@ int main()
     Clock score_time;
     for(int i = 0; i < 3; i ++)
         rockPosition[i] = -300;
+    for(int i = 0; i < 3; i ++)
+        isRock[i] = true;
     // run the program as long as the window is open
     while (window.isOpen()) {
         sf::Event event;
@@ -106,6 +139,15 @@ int main()
                 dino_fly = true;
                 key_control = true;
             }
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+            {
+                dino.setTexture(dinoDownImg);
+                dino_virtual_height = 0;
+            }else
+            {
+                dino_virtual_height = 40;
+                dino.setTexture(dinoImg);
+            }
             // score---------------------------------
             if (score_time.getElapsedTime().asSeconds() >= 0.1f) {
                 score += 1;
@@ -113,13 +155,14 @@ int main()
             text_score.setString(std::to_string(score));
             // score---------------------------------
 
-            if (dino_fly) {
+            if (dino_fly)
+            {
                 if (!dino_up && dino_height >= jump_height) {
                     dino_height -= 20;
                 } else if (dino_up) {
                     dino_height += 20;
                 }
-                dino.setPosition(20, dino_height + 100);
+                dino.setPosition(20, dino_height + globalYpos);
 
 
                 if (dino_height <= jump_height) {
@@ -133,54 +176,81 @@ int main()
 
             } else if (!dino_fly) {
                 dino_height = 0;
-                dino.setPosition(20, 100);
+                dino.setPosition(20, globalYpos);
             }
 
 
-            if (rand() % 9 == 0 && distance > 300) {
+            if (rand() % 9 == 0 && distance > 300)
+            {
                 for (int i = 0; i < 3; i++) {
 
-                    if (rockPosition[i] <= -300) {
-                        rock[i].setPosition(WIDTH, 370);
+                    if (rockPosition[i] <= -300)
+                    {
+                        rock[i].setPosition(WIDTH, globalYpos);
                         rockPosition[i] = WIDTH;
+
+                        if (rand() % 3 == 0) {
+                            isRock[i] = false;
+                            rock[i].setTexture(birdImg);
+                        } else {
+                            isRock[i] = true;
+                            rock[i].setTexture(rockImg);
+                        }
                         break;
                     }
 
                 }
                 distance = 0;
             }
-            if(score % 100 == 0 && score < 500){
-                speed += 5;
+            if ((score % 200 == 0) && (score < 500))
+            {
+                speed += 3;
             }
+
 
             for (int i = 0; i < 3; i++)
                 rockPosition[i] -= speed;
 
             for (int i = 0; i < 3; i++)
-                rock[i].setPosition(rockPosition[i], 370);
+                rock[i].setPosition(rockPosition[i], globalYpos);
 
-            distance += speed - 15;//odleglosc miedzy kamieniami
+            if(rockPosition[objectToCheck] <= -100)
+            {
+                objectToCheck = (objectToCheck+1) % 3;
+            }
+            distance += speed - 20;//odleglosc miedzy kamieniami
+
             window.clear(Color::White);
             window.draw(sprite);
             window.draw(dino);
             window.draw(text_score);
 
-            for(int i = 0; i < 3; i++)
+            for (int i = 0; i < 3; i++)
                 window.draw(rock[i]);
 
-            for (int i = 0; i < 3; i++)
-                if ((dino.getPosition().x - rock[i].getPosition().x > -rockWidth) &&
-                    (dino.getPosition().x - rock[i].getPosition().x < rockWidth + 20)) {
-                    if ((dino.getPosition().y - rock[i].getPosition().y + 270 > -rockHeight) &&
-                        (dino.getPosition().y - rock[i].getPosition().y + 270 < rockHeight))
+
+
+
+                    if ((dino.getPosition().x - rock[objectToCheck].getPosition().x > -rockWidth) &&
+                        (dino.getPosition().x - rock[objectToCheck].getPosition().x < rockWidth + 20))
                     {
-                        stop = true;
+                        if(isRock[objectToCheck])
+                        {
+                            if ((rock[objectToCheck].getPosition().y - dino.getPosition().y < rockHeight))
+                                stop = true;
+
+                        }else
+                        {
+                                if ((rock[objectToCheck].getPosition().y - dino.getPosition().y + dino_virtual_height > 35))
+                                stop = true;
+                        }
+
 
                     }
-                }
+
         }else
         {
-           // window.clear(Color:: White);
+            window.clear();
             window.draw(game_over);
             if (Keyboard::isKeyPressed(Keyboard::Space)) {
                 stop = false;
